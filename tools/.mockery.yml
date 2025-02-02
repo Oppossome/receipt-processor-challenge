@@ -1,0 +1,10 @@
+with-expecter: true
+# Trim the
+dir: '../internal/mocks/{{ trimPrefix .PackagePath "receipt-processor-challenge/internal/"}}'
+outpkg: "mock_{{ .PackageName }}"
+packages:
+  receipt-processor-challenge/internal/domain/usecases:
+    config:
+    interfaces:
+      UsecasesRepo:
+        config:
