@@ -31,7 +31,7 @@ func main() {
 		Addr:    net.JoinHostPort("0.0.0.0", *port),
 	}
 
-	fmt.Printf("Running Receipt Processor on http://%s", s.Addr)
+	fmt.Printf("Running Receipt Processor on http://%s\n", s.Addr)
 
 	// Serve our newly established http server.
 	log.Fatal(s.ListenAndServe())
