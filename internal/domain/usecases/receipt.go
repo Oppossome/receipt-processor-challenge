@@ -39,8 +39,14 @@ func (u *Usecases) ProcessReceipt(ctx context.Context, receipt domain.ReceiptDTO
 	receiptPoints += int64(len(receipt.Items)/2) * 5
 
 	// Rule 5. If the trimmed length of the item description is a multiple of 3, multiply the price by `0.2` and round up to the nearest integer. The result is the number of points earned.
+	// Rule 8. Append ten points for every item that begin with g
 	for _, item := range receipt.Items {
-		trimmedLength := float64(len(strings.TrimSpace(item.ShortDescription)))
+		trimmedDescription := strings.TrimSpace(item.ShortDescription)
+		trimmedLength := float64(len(trimmedDescription))
+
+		if len(trimmedDescription) >= 1 && string(strings.ToLower(trimmedDescription)[0]) == "g" {
+			receiptPoints += 10
+		}
 
 		if math.Mod(trimmedLength, 3) == 0 {
 			itemPoints := math.Ceil(item.Price * 0.2)
@@ -77,4 +83,18 @@ func (u *Usecases) GetReceiptPoints(ctx context.Context, id uuid.UUID) (int64, e
 	}
 
 	return points, nil
+}
+
+func (u *Usecases) DeleteReceipt(ctx context.Context, id uuid.UUID) error {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+
+	_, ok := u.points[id]
+	if !ok {
+		return fmt.Errorf("receipt could not be found")
+	}
+
+	delete(u.points, id)
+
+	return nil
 }

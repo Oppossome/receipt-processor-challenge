@@ -12,6 +12,7 @@ import (
 type UsecasesRepo interface {
 	ProcessReceipt(ctx context.Context, receipt domain.ReceiptDTO) uuid.UUID
 	GetReceiptPoints(ctx context.Context, id uuid.UUID) (int64, error)
+	DeleteReceipt(ctx context.Context, id uuid.UUID) error
 }
 
 // Since circumstances don't demand we have a database, I'll go with the simplest solution for now

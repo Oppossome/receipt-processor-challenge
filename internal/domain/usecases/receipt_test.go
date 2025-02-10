@@ -106,8 +106,9 @@ func TestProcessReceipt(t *testing.T) {
 			},
 		},
 
-		// MARK: - Rule 5.
+		// MARK: - Rule 5 & Rule 8.
 		// Rule 5. If the trimmed length of the item description is a multiple of 3, multiply the price by `0.2` and round up to the nearest integer. The result is the number of points earned.
+		// Rule 8.
 		{
 			name:   "Item description is a multiple of 3 points",
 			points: 10,
@@ -120,6 +121,21 @@ func TestProcessReceipt(t *testing.T) {
 						// Using 46 because it times 0.2 is closer to 9 than 10, ensuring we aren't simply math.Round-ing
 						// 46 * 0.2 = 9.2 (Which rounds up to 10)
 						Price: 46,
+					},
+				},
+				Total: pointlessItem.Price,
+			},
+		},
+		{
+			name:   "Item description starts with g",
+			points: 10,
+			receipt: domain.ReceiptDTO{
+				Retailer:    pointlessReceipt.Retailer,
+				PurchasedAt: pointlessReceipt.PurchasedAt,
+				Items: []domain.ItemDTO{
+					{
+						ShortDescription: "g",
+						Price:            pointlessItem.Price,
 					},
 				},
 				Total: pointlessItem.Price,
@@ -176,7 +192,7 @@ func TestProcessReceipt(t *testing.T) {
 		// These were provided by Fetch and are useful as a concrete truth
 		{
 			name:   "Provided Example 1",
-			points: 109,
+			points: 109 + (10 * 4),
 			receipt: domain.ReceiptDTO{
 				Retailer:    "M&M Corner Market",
 				PurchasedAt: time.Date(2022, 3, 20, 14, 33, 0, 0, time.Local),

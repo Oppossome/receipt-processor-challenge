@@ -56,6 +56,9 @@ type ServerInterface interface {
 	// Submits a receipt for processing.
 	// (POST /receipts/process)
 	PostReceiptsProcess(w http.ResponseWriter, r *http.Request)
+	// Deletes a receipt
+	// (DELETE /receipts/{id})
+	DeleteReceiptsId(w http.ResponseWriter, r *http.Request, id string)
 	// Returns the points awarded for the receipt.
 	// (GET /receipts/{id}/points)
 	GetReceiptsIdPoints(w http.ResponseWriter, r *http.Request, id string)
@@ -68,6 +71,12 @@ type Unimplemented struct{}
 // Submits a receipt for processing.
 // (POST /receipts/process)
 func (_ Unimplemented) PostReceiptsProcess(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Deletes a receipt
+// (DELETE /receipts/{id})
+func (_ Unimplemented) DeleteReceiptsId(w http.ResponseWriter, r *http.Request, id string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -91,6 +100,31 @@ func (siw *ServerInterfaceWrapper) PostReceiptsProcess(w http.ResponseWriter, r 
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.PostReceiptsProcess(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteReceiptsId operation middleware
+func (siw *ServerInterfaceWrapper) DeleteReceiptsId(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteReceiptsId(w, r, id)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -242,6 +276,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/receipts/process", wrapper.PostReceiptsProcess)
 	})
 	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/receipts/{id}", wrapper.DeleteReceiptsId)
+	})
+	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/receipts/{id}/points", wrapper.GetReceiptsIdPoints)
 	})
 
@@ -280,6 +317,29 @@ func (response PostReceiptsProcess400Response) VisitPostReceiptsProcessResponse(
 	return nil
 }
 
+type DeleteReceiptsIdRequestObject struct {
+	Id string `json:"id"`
+}
+
+type DeleteReceiptsIdResponseObject interface {
+	VisitDeleteReceiptsIdResponse(w http.ResponseWriter) error
+}
+
+type DeleteReceiptsId204Response struct {
+}
+
+func (response DeleteReceiptsId204Response) VisitDeleteReceiptsIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteReceiptsId404Response = NotFoundResponse
+
+func (response DeleteReceiptsId404Response) VisitDeleteReceiptsIdResponse(w http.ResponseWriter) error {
+	w.WriteHeader(404)
+	return nil
+}
+
 type GetReceiptsIdPointsRequestObject struct {
 	Id string `json:"id"`
 }
@@ -311,6 +371,9 @@ type StrictServerInterface interface {
 	// Submits a receipt for processing.
 	// (POST /receipts/process)
 	PostReceiptsProcess(ctx context.Context, request PostReceiptsProcessRequestObject) (PostReceiptsProcessResponseObject, error)
+	// Deletes a receipt
+	// (DELETE /receipts/{id})
+	DeleteReceiptsId(ctx context.Context, request DeleteReceiptsIdRequestObject) (DeleteReceiptsIdResponseObject, error)
 	// Returns the points awarded for the receipt.
 	// (GET /receipts/{id}/points)
 	GetReceiptsIdPoints(ctx context.Context, request GetReceiptsIdPointsRequestObject) (GetReceiptsIdPointsResponseObject, error)
@@ -376,6 +439,32 @@ func (sh *strictHandler) PostReceiptsProcess(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// DeleteReceiptsId operation middleware
+func (sh *strictHandler) DeleteReceiptsId(w http.ResponseWriter, r *http.Request, id string) {
+	var request DeleteReceiptsIdRequestObject
+
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteReceiptsId(ctx, request.(DeleteReceiptsIdRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteReceiptsId")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteReceiptsIdResponseObject); ok {
+		if err := validResponse.VisitDeleteReceiptsIdResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetReceiptsIdPoints operation middleware
 func (sh *strictHandler) GetReceiptsIdPoints(w http.ResponseWriter, r *http.Request, id string) {
 	var request GetReceiptsIdPointsRequestObject
@@ -405,21 +494,22 @@ func (sh *strictHandler) GetReceiptsIdPoints(w http.ResponseWriter, r *http.Requ
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"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",
+	"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",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

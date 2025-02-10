@@ -39,3 +39,19 @@ func (repo *HTTPRepo) GetReceiptsIdPoints(ctx context.Context, request oapi.GetR
 
 	return oapi.GetReceiptsIdPoints200JSONResponse{Points: &points}, nil
 }
+
+// Deletes a receipt
+// (DELETE /receipts/{id})
+func (repo *HTTPRepo) DeleteReceiptsId(ctx context.Context, request oapi.DeleteReceiptsIdRequestObject) (oapi.DeleteReceiptsIdResponseObject, error) {
+	id, err := uuid.Parse(request.Id)
+	if err != nil {
+		return oapi.GetReceiptsIdPoints404Response{}, nil
+	}
+
+	err = repo.UsecasesRepo.DeleteReceipt(ctx, id)
+	if err != nil {
+		return oapi.DeleteReceiptsId404Response{}, err
+	}
+
+	return oapi.DeleteReceiptsId204Response{}, nil
+}
